@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+  <html>
+
+    <head>
+      <meta charset="utf-8" />
+      <meta
+       name="viewport"
+       content = "initial-scale=1, maximum-scale=1, user-scalable=no"/>
+      <title>
+        Query Task
+      </title>
+      <!-- The link brings in the javascript function of the arcgis
+
+      api. Below this is the styling for the map function.   -->
+            <link rel = "stylesheet"
+
+          href = "https://js.arcgis.com/4.21/esri/themes/light/main.css"/>
+
+        <script src = "https://js.arcgis.com/4.21/"> </script>
+        <style>
+          html,
+          body,
+          #viewDiv {
+
+            padding: 0;
+
+            margin: 0;
+
+            height: 100%;
+
+            width: 100%;
+
+          }
+         #optionsDiv{
+          background-color: dimgray;
+          color: white;
+           padding: 10px;
+          width: 350px;
+          position: fixed;
+          top: 0;
+          right: 0;
+          z-index: 1;
+
+          }
+          #Title{
+            vertical-align: top;
+            right: 50%;
+            text-align: center;
+            text-decoration-line: underline;
+          }
+          #copyright {
+            bottom:20px;
+            margin:0;
+            padding:0;
+            text-align:center;
+            position:relative;
+            left:50%;
+            transform:translateX(-50%)translateY(-50%);
+          }
+
+        .esri-popup .esri-popup-header .esri-title {
+          font-size: 18px;
+          font-weight: bolder;
+  }
+       .esri-popup .esri-popup-body .esri-popup-content {
+        font-size: 14px;
+  }
+        /* Styling for Dropdown */
+        .dropdown {
+          position: fixed;
+          top: 0;
+          left: 0;
+          z-index: 0;
+
+
+        }
+
+        .dropdown-content {
+          display: none;
+          position: relative;
+          top: 0;
+          left: 0;
+          background-color: #f9f9f9;
+          min-width: 160px;
+          box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+          padding: 12px 16px;
+          z-index: 0;
+          text-align: center;
+        }
+
+        .dropdown:hover .dropdown-content {
+          display: block;
+        }
+
+          </style>
+          <script>
+          //The code identifies the map/ mapview element. You are able to set the
+
+          //base map and the mapview. The container element calls the viewDiv
+
+          //division inside the body section. You are also able to set the zoom.
+                  require(["esri/Map",
+           "esri/views/MapView",
+           "esri/layers/TileLayer",
+            "esri/layers/FeatureLayer",
+           "esri/layers/MapImageLayer",
+           "esri/widgets/BasemapGallery",
+           "esri/layers/GraphicsLayer",
+           "esri/tasks/QueryTask",
+           "esri/tasks/support/Query",
+           "dojo/_base/array",
+           "dojo/dom",
+           "dojo/on",
+           "dojo/domReady!"],
+           function(
+            Map,
+            MapView,
+            TileLayer,
+            FeatureLayer,
+    // This code added the tilelayer service and the transportation layer
+            MapImageLayer,
+  //This code added the MapImageLayer to the web map.
+            BasemapGallery,
+  //This code added the basemap gallery layer to the web map.
+            GraphicsLayer,
+            QueryTask,
+            Query,
+            arrayUtils,
+            dom,
+            on
+          ) {
+            var QuakeRenderer = {
+             type: "simple",
+             symbol: {
+            type: "simple-marker",
+             size: 5,
+              color: "gray",
+              style: "circle",
+              outline:{
+            width: 1,
+             color: "blue" }},
+             label: "Quakes" };
+
+  // This code added mapimagelayer to highlight cities within the transportation layer. The renderer defines the rules and symbols used to display the data in the layer.
+
+             var OKQuakes = new FeatureLayer({
+                url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/Oklahoma_earthquakes/FeatureServer/0",
+                // sublayers: [
+                // {
+                   // id: 0,
+                   renderer: QuakeRenderer
+                   // opacity: 0.4 }]
+             });
+             var TransportationLayer = new TileLayer({
+               url:
+               "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer"});
+            // var TransportationLayer = new TileLayer({
+            //   url: "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer"});
+
+              var map = new Map({
+              basemap: "oceans",
+              layers: [TransportationLayer, OKQuakes] });
+
+              var view = new MapView({
+              container: "viewDiv",
+               map: map,
+               zoom: 6,
+               center: [-97.657667, 35.818517]});
+
+
+               var popUrl="https://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/Oklahoma_earthquakes/FeatureServer/0";
+
+               var popupTemplate = {
+                  // title: "Oklahoma Quake Time: {time}",
+                  title: "{place}",
+                  fieldInfos:[{
+                    fieldName: "latitude",
+                     label: "Latitude",
+                     format: {
+                        places: 2,
+
+                        digitSeperator: true
+
+                     }
+                  }, {
+
+                     fieldName: "longitude",
+                    label: "Longitude",
+                     format: {
+                        places: 2,
+                        digitSeperator: true
+                        }
+
+                     }
+                     // {
+                     //
+                     //    fieldName: "mag",
+                     //   label: "Magnitude",
+                     //    format: {
+                     //       places: 0,
+                     //       digitSeperator: true
+                     //       }
+                     //
+
+
+                  ],
+
+                  content: "<b>latitude:" + "</b> {latitude} " +
+                    "<br><b>longitude:</b> {longitude}" +
+                  "<br><b>Magnitude:</b> {mag}"
+
+               };
+
+  // The code above defines the popup template and assigns different field name values
+  // that are then given content to search for population, Household, and lat/ long queries.
+
+               var resultsLayer = new GraphicsLayer();
+
+               var qTask = new QueryTask({
+
+                  url: popUrl
+
+               });
+
+               var params = new Query({
+
+                  returnGeometry: true,
+
+                  outFields: ["*"] });
+
+                  view.when(function(){
+
+                        view.ui.add("optionsDiv", "bottom-right");
+
+                        on(dom.byId("doBtn"), "click", doQuery);
+  //This code creates a view.when function that defines the location of the query popupTemplate.
+                  });
+
+                  var attributeName = dom.byId("attSelect");
+                  var expressionSign = dom.byId("signSelect");
+                  var value = dom.byId("valSelect");
+                 function doQuery(){
+
+                        resultsLayer.removeAll();
+
+                        params.where = attributeName.value + expressionSign.value + value.value;
+
+                        qTask.execute(params).then(getResults).catch(promiseRejected);
+
+                  }
+
+                  function getResults(response){
+
+                        var popResults = arrayUtils.map(response.features, function(feature){
+                              feature.popupTemplate = popupTemplate;
+                              return feature;
+  // The code above creates a function that will retrieve the results of the input Query
+  // and place them on the map and within the popupTemplate
+                        });
+
+                        resultsLayer.addMany(popResults);
+                        view.goTo(popResults).then(function(){
+                              view.popup.open({
+                                    features: popResults,
+                                    featureMenuOpen: true,
+                                    updateLocationEnabled: true
+                              });
+
+                        });
+
+                        dom.byId("printResults").innerHTML = popResults.length + "results found!";
+  // The lines of code above will add the population results of the query into the popup
+  // and will alert the user that the results were found.
+                  }
+
+                  function promiseRejected(error){
+                        console.error("Promise rejected: ", error.message," Parameter values:",
+                        attributeName.value, expressionSign.value, value.value);
+  // This code creates an error message when the promise is rejected.
+                  }
+
+          });
+        </script>
+      </head>
+
+      <body>
+<div id="Title"><span><b>Oklahoma Earthquakes: Created By Christopher Zuniga for 4422<b></span></div>
+
+ <div id="viewDiv"></div>
+      </body>
+      <div id="copyright">
+       <script>
+        /*The code below creates and sets a variable as "today" to match/reference
+        the current date.*/
+        var today = new Date();
+        /*This next line makes a variable that returns just the year from the current
+        date.*/
+        var year = today.getFullYear();
+        /*This line is used to write the copyright sign with the copy sign and
+         current year next to it.*/
+        document.writeln("Copyright&copy;"+ year)
+       </script>
+       </div>
+      <div class="dropdown">
+        <span>Related Pages</span>
+        <div class="dropdown-content">
+          <p>Tile Layer: <a href="E:/arcAPI/Tile_Layer.html" target="_blank">Dynamic California</a></p>
+          <p>Transportation Map: <a href="E:/arcAPI/arcAPI.html" target="_blank">Open a simple map</a></p>
+          <p>Click Event: <a href="E:/arcAPI/on_event.html" target="_blank">Trigger Click Event?</a></p>
+          <p>BasemapGallery: <a href="E:/arcAPI/basemap_gallery.html" target="_blank">Open Basemap Gallery</a></p>
+        </div>
+
+
+     <div class="esri-widget" id="optionsDiv">
+      <h2>Earthquakes in Oklahoma</h2>
+      <select class="esri-widget" id="attSelect">
+      <option value="mag" selected>Magnitude</option>
+<!-- The lines of code above create a viewDiv and define the class as an esri-widget
+and creates different options for population and Household-->
+   </select>
+   <select class="esri-widget" id="signSelect">
+      <option value="&gt;">is greater than</option>
+
+      <option value="&lt;">is less than</option>
+<!-- This adds the "greater than" and "less than" options to the query popupTemplate.  -->
+   </select>
+   <select class="esri-widget" id="valSelect">
+      <option value="1">1</option>
+
+      <option value="3">3</option>
+
+      <option value="5">5</option>
+
+      <option value="8">8</option>
+
+      <!-- <option value="20">20</option> -->
+<!-- This code adds different population size options to the query popupTemplate -->
+   </select>
+
+   <br>
+
+   <br>
+
+   <button class="esri-widget" id="doBtn">Search</button>
+<!-- This code creates a button labeled "Do Query" That will run the query.  -->
+   <br>
+
+   <p><span id="printResults"></span></p>
+
+</div>
+
+    </html>
